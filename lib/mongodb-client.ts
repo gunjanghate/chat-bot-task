@@ -1,19 +1,32 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, MongoClientOptions } from "mongodb";
 
-const uri = process.env.MONGODB_URI as string;
-const options = {};
+const uri = process.env.MONGODB_URI;
+if (!uri) throw new Error("Please add your MongoDB URI to .env.local");
 
-if (!uri) throw new Error("Add MONGODB_URI to .env.local");
+// Explicit TLS options (safe for Atlas)
+const options: MongoClientOptions = {
+  ssl: true,
+  retryWrites: true,
+  tlsAllowInvalidCertificates: false,
+  tlsAllowInvalidHostnames: false,
+};
 
-let client = new MongoClient(uri, options);
+let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
 if (process.env.NODE_ENV === "development") {
-  if (!(global as any)._mongoClientPromise) {
-    (global as any)._mongoClientPromise = client.connect();
+  // In development, reuse the same client to avoid hot-reload issues
+  const globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>;
+  };
+
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    globalWithMongo._mongoClientPromise = client.connect();
   }
-  clientPromise = (global as any)._mongoClientPromise;
+  clientPromise = globalWithMongo._mongoClientPromise;
 } else {
+  client = new MongoClient(uri, options);
   clientPromise = client.connect();
 }
 
