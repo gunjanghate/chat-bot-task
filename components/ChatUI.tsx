@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Send, Bot, User, MessageCircle, Sparkles } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface IMessage {
   role: "user" | "bot";
@@ -40,7 +42,10 @@ export default function ChatUI() {
     setIsTyping(true);
 
     try {
-      const botResponse = await axios.post("/api/chatbot", { message: input });
+      const botResponse = await axios.post("/api/chatbot", {
+        message: `Respond in **clean markdown format** with proper formatting and bullet points if needed:\n${input}`,
+      });
+
       const botMessage: IMessage = {
         role: "bot",
         content: botResponse.data.reply,
@@ -94,7 +99,7 @@ export default function ChatUI() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="bg-white w-full max-w-3xl rounded-3xl shadow-xl border border-gray-200 flex flex-col overflow-hidden"
+        className="bg-white scroll-smooth w-full max-w-3xl rounded-3xl shadow-xl border border-gray-200 flex flex-col overflow-hidden"
       >
         {/* Messages */}
         <div className="h-96 overflow-y-auto p-6 space-y-4">
@@ -124,19 +129,24 @@ export default function ChatUI() {
                   )}
                 </div>
                 <div
-                  className={`px-4 py-3 rounded-2xl shadow-sm ${
+                  className={`px-4 py-3 rounded-2xl shadow-sm max-w-10/11 overflow-y-auto break-words ${
                     msg.role === "user"
                       ? "bg-gradient-to-r from-[#F9A826] to-[#E8505B] text-white"
                       : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === "bot" ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {/* Typing Indicator */}
           {isTyping && (
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#00C2A8] flex items-center justify-center shadow-md">
